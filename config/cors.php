@@ -1,0 +1,11 @@
+<?php
+return [
+    'paths'                    => ['api/*', 'sanctum/csrf-cookie'],
+    'allowed_methods'          => ['*'],
+    'allowed_origins'          => [env('APP_FRONTEND_URL', 'http://localhost:3000')],
+    'allowed_origins_patterns' => [],
+    'allowed_headers'          => ['*'],
+    'exposed_headers'          => ['X-Total-Count'],
+    'max_age'                  => 600,
+    'supports_credentials'     => true,
+];
