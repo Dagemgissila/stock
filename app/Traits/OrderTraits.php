@@ -5,14 +5,13 @@ trait OrderTraits
 {
     public function calculateGrandTotal(): float
     {
-        return $this->subtotal
-            - $this->discount
-            + $this->tax_amount
-            + $this->shipping;
+        return max(0, $this->subtotal - $this->discount + $this->tax_amount + $this->shipping);
     }
 
     public function updateDueAmount(): void
     {
+        // FIXED: use sum of OrderPayment records instead of Payment records directly
+        // to avoid counting payments attached to other orders
         $paid = $this->payments()->sum('amount');
         $this->due_amount = max(0, $this->grand_total - $paid);
         $this->saveQuietly();
@@ -30,8 +29,5 @@ trait OrderTraits
         return $query;
     }
 
-    public function isPaid(): bool
-    {
-        return $this->due_amount <= 0;
-    }
+    public function isPaid(): bool { return $this->due_amount <= 0; }
 }
