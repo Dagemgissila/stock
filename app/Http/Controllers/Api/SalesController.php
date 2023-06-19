@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\ApiBaseController;
 use App\Models\Order;
 use App\Models\WarehouseStock;
+use App\Models\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -16,7 +17,7 @@ class SalesController extends ApiBaseController
             ->withDateRange($request->from_date, $request->to_date);
         if ($request->order_status) $query->where('order_status', $request->order_status);
         if ($request->party_id)     $query->where('party_id',     $request->party_id);
-        return $this->sendResponse($this->paginate($query->latest('order_date')));
+        return $this->sendResponse($this->paginate($this->applySorting($query, 'order_date')));
     }
 
     public function store(Request $request): JsonResponse
@@ -30,26 +31,39 @@ class SalesController extends ApiBaseController
             'items.*.unit_price'    => 'required|numeric|min:0',
         ]);
 
-        // Stock availability check
-        if (!$this->checkStock($request->warehouse_id, $request->items)) {
-            return $this->sendError('Insufficient stock for one or more items.', [], 422);
+        $companyId       = auth('api')->user()->company_id;
+        $allowNegative   = Settings::getSetting('allow_negative_stock', $companyId);
+
+        // Stock check (skipped if allow_negative_stock is enabled)
+        if (!$allowNegative) {
+            $shortages = [];
+            foreach ($request->items as $item) {
+                $stock = WarehouseStock::where('warehouse_id', $request->warehouse_id)
+                    ->where('product_id', $item['product_id'])->first();
+                if (!$stock || $stock->quantity < $item['quantity']) {
+                    $shortages[] = ['product_id' => $item['product_id'],
+                                    'available'  => $stock->quantity ?? 0,
+                                    'requested'  => $item['quantity']];
+                }
+            }
+            if (!empty($shortages)) {
+                return $this->sendError('Insufficient stock for one or more items.', $shortages);
+            }
         }
 
         $order = Order::create(array_merge($request->except('items'), [
             'order_type'     => 'sales',
-            'company_id'     => auth('api')->user()->company_id,
+            'company_id'     => $companyId,
             'invoice_number' => 'SAL-' . strtoupper(uniqid()),
-            'order_status'   => $request->input('order_status','completed'),
+            'order_status'   => 'completed',
+            'staff_user_id'  => auth('api')->id(),
         ]));
 
         $subtotal = 0;
         foreach ($request->items as $item) {
             $lineTotal = $item['unit_price'] * $item['quantity'];
             $subtotal += $lineTotal;
-            $order->items()->create(array_merge($item, [
-                'company_id' => $order->company_id,
-                'subtotal'   => $lineTotal,
-            ]));
+            $order->items()->create(array_merge($item, ['company_id'=>$companyId,'subtotal'=>$lineTotal]));
         }
 
         $order->subtotal    = $subtotal;
@@ -57,28 +71,19 @@ class SalesController extends ApiBaseController
         $order->due_amount  = $order->grand_total;
         $order->save();
 
-        return $this->sendResponse($order->load('items.product'), 'Sale order created', 201);
+        return $this->sendResponse($order->load('items.product'), 'Sale created', 201);
     }
 
     public function show(int $id): JsonResponse
     {
-        $order = Order::with(['items.product','party','payments.paymentMode','warehouse'])->findOrFail($id);
-        return $this->sendResponse($order);
+        return $this->sendResponse(
+            Order::with(['items.product','party','payments.payment.paymentMode','warehouse'])->findOrFail($id)
+        );
     }
 
     public function destroy(int $id): JsonResponse
     {
         Order::findOrFail($id)->delete();
-        return $this->sendResponse([], 'Sale order deleted');
-    }
-
-    private function checkStock(int $warehouseId, array $items): bool
-    {
-        foreach ($items as $item) {
-            $stock = WarehouseStock::where('warehouse_id', $warehouseId)
-                ->where('product_id', $item['product_id'])->first();
-            if (!$stock || $stock->quantity < $item['quantity']) return false;
-        }
-        return true;
+        return $this->sendResponse([], 'Sale deleted');
     }
 }
