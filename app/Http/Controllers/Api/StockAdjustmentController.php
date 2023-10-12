@@ -1,9 +1,7 @@
 <?php
 namespace App\Http\Controllers\Api;
-
 use App\Http\Controllers\ApiBaseController;
 use App\Models\StockAdjustment;
-use App\Models\WarehouseStock;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -27,22 +25,17 @@ class StockAdjustmentController extends ApiBaseController
             'type'         => 'required|in:addition,subtraction,damage,expiry',
             'reason'       => 'nullable|string|max:500',
         ]);
-
         $data = array_merge($request->all(), [
             'company_id'  => auth('api')->user()->company_id,
             'adjusted_by' => auth('api')->id(),
         ]);
-
-        $adjustment = StockAdjustment::create($data);
-        return $this->sendResponse(
-            $adjustment->load(['product','warehouse']),
-            'Stock adjusted successfully', 201
-        );
+        $adj = StockAdjustment::create($data);
+        return $this->sendResponse($adj->load(['product','warehouse']), 'Stock adjusted', 201);
     }
 
     public function destroy(int $id): JsonResponse
     {
         StockAdjustment::findOrFail($id)->delete();
-        return $this->sendResponse([], 'Adjustment deleted');
+        return $this->sendResponse([], 'Deleted');
     }
 }
