@@ -1,11 +1,9 @@
 <?php
 namespace App\Http\Controllers\Api;
-
 use App\Http\Controllers\ApiBaseController;
 use App\Models\Order;
 use App\Models\WarehouseStock;
 use App\Models\WarehouseHistory;
-use App\Models\StockHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -20,23 +18,20 @@ class StockTransferController extends ApiBaseController
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'from_warehouse_id' => 'required|exists:warehouses,id|different:warehouse_id',
-            'warehouse_id'      => 'required|exists:warehouses,id',
-            'items'             => 'required|array|min:1',
-            'items.*.product_id'=> 'required|exists:products,id',
-            'items.*.quantity'  => 'required|numeric|min:0.001',
+            'from_warehouse_id'  => 'required|exists:warehouses,id|different:warehouse_id',
+            'warehouse_id'       => 'required|exists:warehouses,id',
+            'items'              => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity'   => 'required|numeric|min:0.001',
         ]);
 
         $companyId = auth('api')->user()->company_id;
 
-        // Validate sufficient source stock for all items first
         foreach ($request->items as $item) {
-            $src = WarehouseStock::where('warehouse_id', $request->from_warehouse_id)
+            $stock = WarehouseStock::where('warehouse_id', $request->from_warehouse_id)
                 ->where('product_id', $item['product_id'])->first();
-            if (!$src || $src->quantity < $item['quantity']) {
-                return $this->sendError(
-                    'Insufficient stock in source warehouse for product ID ' . $item['product_id']
-                );
+            if (!$stock || $stock->quantity < $item['quantity']) {
+                return $this->sendError('Insufficient stock in source warehouse for product ID '.$item['product_id']);
             }
         }
 
@@ -45,26 +40,19 @@ class StockTransferController extends ApiBaseController
             'warehouse_id'      => $request->warehouse_id,
             'from_warehouse_id' => $request->from_warehouse_id,
             'order_type'        => 'stock_transfer',
-            'invoice_number'    => 'TRF-' . strtoupper(uniqid()),
+            'invoice_number'    => 'TRF-'.strtoupper(uniqid()),
             'order_status'      => 'completed',
             'order_date'        => now()->toDateString(),
         ]);
 
         foreach ($request->items as $item) {
             $order->items()->create(array_merge($item, ['company_id' => $companyId]));
-
-            // Deduct from source
             WarehouseStock::where('warehouse_id', $request->from_warehouse_id)
-                ->where('product_id', $item['product_id'])
-                ->decrement('quantity', $item['quantity']);
-
-            // Add to destination
+                ->where('product_id', $item['product_id'])->decrement('quantity', $item['quantity']);
             WarehouseStock::firstOrCreate(
-                ['warehouse_id' => $request->warehouse_id, 'product_id' => $item['product_id']],
-                ['company_id' => $companyId, 'quantity' => 0]
-            )->increment('quantity', $item['quantity']);
-
-            // Write warehouse history audit record
+                ['warehouse_id'=>$request->warehouse_id,'product_id'=>$item['product_id']],
+                ['company_id'=>$companyId,'quantity'=>0])
+                ->increment('quantity', $item['quantity']);
             WarehouseHistory::create([
                 'company_id'        => $companyId,
                 'from_warehouse_id' => $request->from_warehouse_id,
