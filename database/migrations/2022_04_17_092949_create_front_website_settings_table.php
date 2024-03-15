@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->text('store_description')->nullable();
             $table->string('banner_image')->nullable();
             $table->string('logo')->nullable();
-            $table->string('primary_color', 20)->nullable();
+            $table->string('primary_color',20)->nullable();
             $table->string('meta_title')->nullable();
             $table->text('meta_description')->nullable();
             $table->boolean('is_active')->default(true);
