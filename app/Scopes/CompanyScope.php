@@ -1,9 +1,6 @@
 <?php
 namespace App\Scopes;
-
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Scope;
+use Illuminate\Database\Eloquent\{Builder,Model,Scope};
 
 class CompanyScope implements Scope
 {
@@ -11,19 +8,15 @@ class CompanyScope implements Scope
     {
         $companyId = $this->resolveCompanyId();
         if ($companyId) {
-            $builder->where($model->getTable() . '.company_id', $companyId);
+            $builder->where($model->getTable().'.company_id', $companyId);
         }
     }
 
     private function resolveCompanyId(): ?int
     {
-        // Use request-injected value (set by ApiAuthMiddleware) for reliability
-        if (request()->has('_company_id')) {
-            return (int) request()->input('_company_id');
-        }
-        if (auth()->check() && auth()->user()->company_id) {
-            return (int) auth()->user()->company_id;
-        }
+        // Use middleware-injected value to prevent cross-company data leakage
+        if (request()->has('_company_id')) return (int) request()->input('_company_id');
+        if (auth()->check() && auth()->user()->company_id) return (int) auth()->user()->company_id;
         return null;
     }
 }
