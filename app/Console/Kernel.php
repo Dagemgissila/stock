@@ -1,23 +1,15 @@
 <?php
 namespace App\Console;
-
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-
 class Kernel extends ConsoleKernel
 {
-    protected function schedule(Schedule $schedule): void
-    {
-        // Daily database backup at 02:00 UTC
+    protected function schedule(Schedule $schedule):void{
         $schedule->command('db:backup')->dailyAt('02:00');
-
-        // Send low-stock alert notifications at 08:00 every weekday
         $schedule->command('stock:alert')->weekdays()->at('08:00');
     }
-
-    protected function commands(): void
-    {
-        $this->load(__DIR__ . '/Commands');
+    protected function commands():void{
+        $this->load(__DIR__.'/Commands');
         require base_path('routes/console.php');
     }
 }
