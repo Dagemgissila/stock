@@ -8,3 +8,13 @@
 /storage/framework/views
 /.phpunit.result.cache
 /phpunit.result.cache
+/storage/app/backups
+*.DS_Store
+/public/uploads/products/*
+/public/uploads/companies/*
+/public/uploads/categories/*
+/public/uploads/warehouses/*
+!/public/uploads/products/.gitkeep
+!/public/uploads/companies/.gitkeep
+!/public/uploads/categories/.gitkeep
+!/public/uploads/warehouses/.gitkeep
