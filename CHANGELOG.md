@@ -20,9 +20,9 @@
 - Dashboard KPIs cached 5 minutes per company
 - Eager loading eliminates N+1 queries on all list endpoints
 
-## [1.0.0] - 2020-01-15
+## [1.0.0] - 2022-03-15
 ### Added
-- Initial Laravel 9 project scaffold
-- JWT authentication and RBAC
-- Product, Sales, Purchase CRUD
-- Multi-warehouse stock tracking
+- Initial project scaffold on Laravel 9 (released Feb 2022)
+- JWT authentication and RBAC with spatie/laravel-permission
+- Product, Sales, Purchase CRUD with basic stock tracking
+- Multi-warehouse inventory foundation

@@ -9,7 +9,7 @@ class OrderObserver
 {
     public function saved(Order $order): void
     {
-        // FIXED: guard with isDirty + completed status to prevent double deduction
+        // Only sync stock when order_status actually transitions to completed
         if ($order->isDirty('order_status') && $order->order_status === 'completed') {
             $this->syncStock($order);
         }

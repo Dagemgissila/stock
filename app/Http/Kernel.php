@@ -34,6 +34,5 @@ class Kernel extends HttpKernel
         'auth.customer' => \App\Http\Middleware\ApiCustomerMiddleware::class,
         'auth.super'    => \App\Http\Middleware\ApiSuperAdminMiddleware::class,
         'permission'    => \App\Http\Middleware\CheckPermission::class,
-        'license'       => \App\Http\Middleware\LicenseExpireDateWise::class,
     ];
 }

@@ -10,7 +10,7 @@ trait OrderTraits
 
     public function updateDueAmount(): void
     {
-        // FIXED: use sum of OrderPayment records instead of Payment records directly
+        // Use OrderPayment sum to stay scoped to this order
         // to avoid counting payments attached to other orders
         $paid = $this->payments()->sum('amount');
         $this->due_amount = max(0, $this->grand_total - $paid);
